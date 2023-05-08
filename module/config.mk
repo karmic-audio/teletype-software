@@ -120,6 +120,7 @@ CSRCS = \
 	../src/ops/turtle.c					\
 	../src/ops/seed.c					\
 	../libavr32/src/adc.c					\
+	../libavr32/src/edgetrigger.c			\
 	../libavr32/src/events.c				\
 	../libavr32/src/euclidean/euclidean.c			\
 	../libavr32/src/euclidean/data.c			\
@@ -143,6 +144,10 @@ CSRCS = \
 	../libavr32/src/usb/ftdi/ftdi.c				\
 	../libavr32/src/usb/ftdi/uhi_ftdi.c			\
 	../libavr32/src/usb/hid/hid.c				\
+	../libavr32/src/usb/multihid/multihid.c		\
+	../libavr32/src/usb/multihid/multihid_descriptors.c	\
+	../libavr32/src/usb/multihid/parser.c		\
+	../libavr32/src/usb/multihid/keyboard.c		\
 	../libavr32/src/usb/hid/uhi_hid.c			\
 	../libavr32/src/usb/midi/uhi_midi.c			\
 	../libavr32/src/usb/midi/midi.c				\
@@ -187,6 +192,7 @@ INC_PATH = \
 	../src/usb/hid						\
 	../src/usb/midi						\
 	../src/usb/msc						\
+	../src/usb/multihid					\
 	../conf							\
 	../conf/teletype					\
 	avr32/boards						\

@@ -13,6 +13,8 @@
 #include "spi.h"
 #include "sysclk.h"
 #include "usb_protocol_hid.h"
+#include "multihid.h"
+#include "edgetrigger.h"
 
 // system
 #include "adc.h"
@@ -122,6 +124,8 @@ static uint8_t front_timer;
 static uint8_t mod_key = 0, hold_key, hold_key_count = 0;
 static uint64_t last_adc_tick = 0;
 static midi_behavior_t midi_behavior;
+static multihid_device_t *hid_keyboard = NULL;
+static edgetrigger_t *hid_keyboard_trigger = NULL;
 
 // timers
 static softTimer_t clockTimer = { .next = NULL, .prev = NULL };
@@ -160,9 +164,9 @@ static void handler_None(int32_t data);
 static void handler_Front(int32_t data);
 static void handler_PollADC(int32_t data);
 static void handler_KeyTimer(int32_t data);
-static void handler_HidConnect(int32_t data);
-static void handler_HidDisconnect(int32_t data);
-static void handler_HidTimer(int32_t data);
+static void handler_MultihidConnect(int32_t data);
+static void handler_MultihidDisconnect(int32_t data);
+static void handler_MultihidTimer(int32_t data);
 static void handler_MscConnect(int32_t data);
 static void handler_Trigger(int32_t data);
 static void handler_ScreenRefresh(int32_t data);
@@ -289,7 +293,7 @@ void adcTimer_callback(void* o) {
 }
 
 void hidTimer_callback(void* o) {
-    event_t e = { .type = kEventHidTimer, .data = 0 };
+    event_t e = { .type = kEventMultihidTimer, .data = 0 };
     event_post(&e);
 }
 
@@ -449,38 +453,72 @@ void handler_KeyTimer(int32_t data) {
     }
 }
 
-void handler_HidConnect(int32_t data) {
-    timer_add(&hidTimer, 47, &hidTimer_callback, NULL);
+static void hid_keyboard_callback(void *context, uint8_t *report, size_t report_size) {
+    edgetrigger_t *trigger = (edgetrigger_t *)context;
+    edgetrigger_fill(trigger, report);
 }
 
-void handler_HidDisconnect(int32_t data) {
-    timer_remove(&hidTimer);
-}
+void handler_MultihidConnect(int32_t data) {
+    print_dbg("\r\nMultiHID connected...");
 
-void handler_HidTimer(int32_t data) {
-    if (hid_get_frame_dirty()) {
-        const int8_t* frame = (const int8_t*)hid_get_frame_data();
+    multihid_device_t *devices = (multihid_device_t *)data;
+    multihid_device_t *keyboard = multihid_find_keyboard(devices);
 
-        mod_key = frame[0];
-        for (size_t i = 2; i < 8; i++) {
-            if (frame[i] == 0) {
-                if (i == 2) {
-                    hold_key_count = 0;
-                    process_keypress(hold_key, mod_key, false, true);
-                    hold_key = 0;
-                }
-            }
-            else if (frame_compare(frame[i]) == false) {
-                hold_key = frame[i];
-                hold_key_count = 0;
-                process_keypress(hold_key, mod_key, false, false);
-            }
+    if (keyboard != NULL) {
+        if (hid_keyboard != NULL) {
+            multihid_device_free(hid_keyboard);
         }
+        hid_keyboard = keyboard;
 
-        set_old_frame(frame);
+        if (hid_keyboard_trigger != NULL) {
+            edgetrigger_free(hid_keyboard_trigger);
+        }
+        hid_keyboard_trigger = edgetrigger_new(keyboard->report_size);
+
+        multihid_start(hid_keyboard, hid_keyboard_callback, hid_keyboard_trigger);
+        timer_add(&hidTimer, 47, &hidTimer_callback, NULL);
+    }
+}
+
+void handler_MultihidDisconnect(int32_t data) {
+    print_dbg("\r\nMultiHID disconnected...");
+
+    timer_remove(&hidTimer);
+    if (hid_keyboard_trigger != NULL) {
+        edgetrigger_free(hid_keyboard_trigger);
+        hid_keyboard_trigger = NULL;
+    }
+    hid_keyboard = NULL;
+}
+
+void handler_MultihidTimer(int32_t data) {
+    if (hid_keyboard == NULL || hid_keyboard_trigger == NULL) {
+        return;
     }
 
-    hid_clear_frame_dirty();
+    if (!edgetrigger_is_dirty(hid_keyboard_trigger)) {
+        return;
+    }
+
+    hid_boot_keyboard_report_t *report = (hid_boot_keyboard_report_t *)edgetrigger_buffer(hid_keyboard_trigger);
+    mod_key = report->modifiers;
+    for (size_t i = 0; i < 6; i++) {
+        if (report->keys[i] == 0) {
+            if (i == 0) {
+                hold_key_count = 0;
+                process_keypress(hold_key, mod_key, false, true);
+                hold_key = 0;
+            }
+        }
+        else if (frame_compare(report->keys[i]) == false) {
+            hold_key = report->keys[i];
+            hold_key_count = 0;
+            process_keypress(hold_key, mod_key, false, false);
+        }
+    }
+
+    set_old_keys(report->keys);
+    edgetrigger_clear_dirty(hid_keyboard_trigger);
 }
 
 void handler_MscConnect(int32_t data) {
@@ -722,9 +760,9 @@ void assign_main_event_handlers() {
     app_event_handlers[kEventFront] = &handler_Front;
     app_event_handlers[kEventPollADC] = &handler_PollADC;
     app_event_handlers[kEventKeyTimer] = &handler_KeyTimer;
-    app_event_handlers[kEventHidConnect] = &handler_HidConnect;
-    app_event_handlers[kEventHidDisconnect] = &handler_HidDisconnect;
-    app_event_handlers[kEventHidTimer] = &handler_HidTimer;
+    app_event_handlers[kEventMultihidConnect] = &handler_MultihidConnect;
+    app_event_handlers[kEventMultihidDisconnect] = &handler_MultihidDisconnect;
+    app_event_handlers[kEventMultihidTimer] = &handler_MultihidTimer;
     app_event_handlers[kEventMscConnect] = &handler_MscConnect;
     app_event_handlers[kEventTrigger] = &handler_Trigger;
     app_event_handlers[kEventScreenRefresh] = &handler_ScreenRefresh;
