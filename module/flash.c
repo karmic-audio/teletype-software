@@ -4,6 +4,7 @@
 
 // asf
 #include "flashc.h"
+#include "delay.h"
 #include "gpio.h"
 #include "init_teletype.h"
 #include "print_funcs.h"
@@ -34,7 +35,7 @@ void flash_prepare() {
         int confirm = 1;
         uint32_t counter = 0;
         int toggle = 0;
-#define TIMEOUT 100000
+#define TIMEOUT 5000
         while (confirm == 1 && (++counter < TIMEOUT)) {
             confirm = gpio_get_pin_value(NMI);
             if ((counter % 1000) == 0) {
@@ -43,7 +44,7 @@ void flash_prepare() {
                 else
                     gpio_set_pin_high(B11);
             }
-            print_dbg_ulong(confirm);
+            delay_ms(1);
         }
         gpio_set_pin_low(B11);
         if (counter >= TIMEOUT) return;
