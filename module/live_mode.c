@@ -768,7 +768,7 @@ uint8_t screen_refresh_live() {
             output.has_value = false;
         }
         else if (show_welcome_message) {
-            strcpy(s, "TELETYPE ");
+            strcpy(s, "BAUDOT ");
             strncat(s, git_version, 35 - strlen(s));
             show_welcome_message = false;
         }
