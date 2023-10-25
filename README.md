@@ -1,8 +1,15 @@
-# teletype
+# baudot
 
-monome eurorack module
+Firmare for the Karmic Audio Baudot, a clone of the Monome Teletype.
 
 http://monome.org/docs/teletype
+
+## Differences from upstream:
+
+- Branding (Teletype -> Baudot)
+- Improved HID support ('MultiHID') for composite USB keyboards.
+
+We hope to upstream all changes other than branding changes.
 
 ## Directories
 
