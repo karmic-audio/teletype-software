@@ -3,8 +3,8 @@
 #include <string.h>
 
 // asf
-#include "flashc.h"
 #include "delay.h"
+#include "flashc.h"
 #include "gpio.h"
 #include "init_teletype.h"
 #include "print_funcs.h"

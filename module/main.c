@@ -5,16 +5,16 @@
 // asf
 #include "compiler.h"
 #include "delay.h"
+#include "edgetrigger.h"
 #include "gpio.h"
 #include "intc.h"
+#include "multihid.h"
 #include "pm.h"
 #include "preprocessor.h"
 #include "print_funcs.h"
 #include "spi.h"
 #include "sysclk.h"
 #include "usb_protocol_hid.h"
-#include "multihid.h"
-#include "edgetrigger.h"
 
 // system
 #include "adc.h"
@@ -124,8 +124,8 @@ static uint8_t front_timer;
 static uint8_t mod_key = 0, hold_key, hold_key_count = 0;
 static uint64_t last_adc_tick = 0;
 static midi_behavior_t midi_behavior;
-static multihid_device_t *hid_keyboard = NULL;
-static edgetrigger_t *hid_keyboard_trigger = NULL;
+static multihid_device_t* hid_keyboard = NULL;
+static edgetrigger_t* hid_keyboard_trigger = NULL;
 
 // timers
 static softTimer_t clockTimer = { .next = NULL, .prev = NULL };
@@ -453,21 +453,20 @@ void handler_KeyTimer(int32_t data) {
     }
 }
 
-static void hid_keyboard_callback(void *context, uint8_t *report, size_t report_size) {
-    edgetrigger_t *trigger = (edgetrigger_t *)context;
+static void hid_keyboard_callback(void* context, uint8_t* report,
+                                  size_t report_size) {
+    edgetrigger_t* trigger = (edgetrigger_t*)context;
     edgetrigger_fill(trigger, report);
 }
 
 void handler_MultihidConnect(int32_t data) {
     print_dbg("\r\nMultiHID connected...");
 
-    multihid_device_t *devices = (multihid_device_t *)data;
-    multihid_device_t *keyboard = multihid_find_keyboard(devices);
+    multihid_device_t* devices = (multihid_device_t*)data;
+    multihid_device_t* keyboard = multihid_find_keyboard(devices);
 
     if (keyboard != NULL) {
-        if (hid_keyboard != NULL) {
-            multihid_device_free(hid_keyboard);
-        }
+        if (hid_keyboard != NULL) { multihid_device_free(hid_keyboard); }
         hid_keyboard = keyboard;
 
         if (hid_keyboard_trigger != NULL) {
@@ -475,7 +474,8 @@ void handler_MultihidConnect(int32_t data) {
         }
         hid_keyboard_trigger = edgetrigger_new(keyboard->report_size);
 
-        multihid_start(hid_keyboard, hid_keyboard_callback, hid_keyboard_trigger);
+        multihid_start(hid_keyboard, hid_keyboard_callback,
+                       hid_keyboard_trigger);
         timer_add(&hidTimer, 47, &hidTimer_callback, NULL);
     }
 }
@@ -492,15 +492,12 @@ void handler_MultihidDisconnect(int32_t data) {
 }
 
 void handler_MultihidTimer(int32_t data) {
-    if (hid_keyboard == NULL || hid_keyboard_trigger == NULL) {
-        return;
-    }
+    if (hid_keyboard == NULL || hid_keyboard_trigger == NULL) { return; }
 
-    if (!edgetrigger_is_dirty(hid_keyboard_trigger)) {
-        return;
-    }
+    if (!edgetrigger_is_dirty(hid_keyboard_trigger)) { return; }
 
-    hid_boot_keyboard_report_t *report = (hid_boot_keyboard_report_t *)edgetrigger_buffer(hid_keyboard_trigger);
+    hid_boot_keyboard_report_t* report =
+        (hid_boot_keyboard_report_t*)edgetrigger_buffer(hid_keyboard_trigger);
     mod_key = report->modifiers;
     for (size_t i = 0; i < 6; i++) {
         if (report->keys[i] == 0) {
