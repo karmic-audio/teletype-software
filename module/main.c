@@ -46,6 +46,7 @@
 #include "keyboard_helper.h"
 #include "live_mode.h"
 #include "pattern_mode.h"
+#include "gol_mode.h" //GOL mode add <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 #include "preset_r_mode.h"
 #include "preset_w_mode.h"
 #include "teletype.h"
@@ -554,6 +555,7 @@ void handler_ScreenRefresh(int32_t data) {
 
     switch (mode) {
         case M_PATTERN: screen_dirty = screen_refresh_pattern(); break;
+        case M_GOL: screen_dirty = screen_refresh_gol(); break; //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
         case M_PRESET_W: screen_dirty = screen_refresh_preset_w(); break;
         case M_PRESET_R: screen_dirty = screen_refresh_preset_r(); break;
         case M_HELP: screen_dirty = screen_refresh_help(); break;
@@ -813,6 +815,10 @@ void set_mode(tele_mode_t m) {
             set_pattern_mode();
             mode = M_PATTERN;
             break;
+        case M_GOL: //<<<<<<<<<<<<<<<<<<<<<<<<<
+            set_gol_mode();
+            mode = M_GOL;
+            break;
         case M_PRESET_W:
             set_preset_w_mode();
             mode = M_PRESET_W;
@@ -833,7 +839,7 @@ void set_mode(tele_mode_t m) {
 void set_last_mode() {
     if (mode == last_mode) return;
 
-    if (last_mode == M_LIVE || last_mode == M_EDIT || last_mode == M_PATTERN)
+    if (last_mode == M_LIVE || last_mode == M_EDIT || last_mode == M_PATTERN || last_mode == M_GOL)//<<<<<<<
         set_mode(last_mode);
     else
         set_mode(M_LIVE);
@@ -874,6 +880,7 @@ void process_keypress(uint8_t key, uint8_t mod_key, bool is_held_key,
             process_live_keys(key, mod_key, is_held_key, false, &scene_state);
             break;
         case M_PATTERN: process_pattern_keys(key, mod_key, is_held_key); break;
+        case M_GOL: process_gol_keys(key, mod_key, is_held_key); break; //<<<<<<<<<<<<<<<<<<<<<<<<<<
         case M_PRESET_W:
             process_preset_w_keys(key, mod_key, is_held_key);
             break;
@@ -891,9 +898,11 @@ bool process_global_keys(uint8_t k, uint8_t m, bool is_held_key) {
     // <tab>: change modes, live to edit to pattern and back
     if (match_no_mod(m, k, HID_TAB)) {
         if (mode == M_LIVE)
+            set_mode(M_GOL);
+        else if (mode == M_GOL)
             set_mode(M_EDIT);
         else if (mode == M_EDIT)
-            set_mode(M_PATTERN);
+            set_mode(M_PATTERN);//<<<<<<<<<<<<<<<<<<
         else
             set_mode(M_LIVE);
         return true;

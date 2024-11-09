@@ -22,6 +22,8 @@
 #define STACK_OP_SIZE 16
 #define PATTERN_COUNT 4
 #define PATTERN_LENGTH 64
+#define GOL_X 128
+#define GOL_Y 64
 #define SCRIPT_MAX_COMMANDS 6
 #define EXEC_DEPTH 8
 #define WHILE_DEPTH 10000
@@ -126,6 +128,11 @@ typedef struct {
     int16_t end;
     int16_t val[PATTERN_LENGTH];
 } scene_pattern_t;
+
+typedef struct {
+    uint64_t cells[GOL_X];
+} scene_gol_t; ///<<<<<<<<<<GOL
+
 
 typedef struct {
     // TODO add a delay variables struct?
@@ -261,6 +268,7 @@ typedef struct {
     bool initializing;
     scene_variables_t variables;
     scene_pattern_t patterns[PATTERN_COUNT];
+    scene_gol_t gol_grid; //<<<<GOL
     scene_delay_t delay;
     scene_stack_op_t stack_op;
     scene_script_t scripts[TOTAL_SCRIPT_COUNT];
@@ -277,6 +285,7 @@ extern void ss_init(scene_state_t *ss);
 extern void ss_variables_init(scene_state_t *ss);
 extern void ss_patterns_init(scene_state_t *ss);
 extern void ss_pattern_init(scene_state_t *ss, size_t pattern_no);
+extern void ss_gol_init(scene_state_t *ss);//<<<GOL
 extern void ss_grid_init(scene_state_t *ss);
 extern void ss_grid_common_init(grid_common_t *gc);
 extern void ss_rand_init(scene_state_t *ss);
@@ -310,6 +319,17 @@ extern void ss_set_pattern_val(scene_state_t *ss, size_t pattern, size_t idx,
                                int16_t val);
 extern scene_pattern_t *ss_patterns_ptr(scene_state_t *ss);
 extern size_t ss_patterns_size(void);
+
+//GOL
+
+extern void gol_flip_on(scene_gol_t *gg, uint8_t GolXcoord, uint8_t GolYcoord);
+extern void gol_flip_off(scene_gol_t *gg, uint8_t GolXcoord, uint8_t GolYcoord);
+extern int gol_isalive(scene_gol_t *gg, uint8_t GolXcoord, uint8_t GolYcoord);
+extern int gol_AliveNeighbors(scene_gol_t *gg, uint8_t GolXcoord, uint8_t GolYcoord);
+extern void gol_next_gen(scene_gol_t *gg);
+
+//end GOL
+
 
 uint8_t ss_get_script_len(scene_state_t *ss, uint8_t idx);
 const tele_command_t *ss_get_script_command(scene_state_t *ss,

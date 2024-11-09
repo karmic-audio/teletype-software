@@ -26,6 +26,7 @@ typedef enum {
     M_LIVE,
     M_EDIT,
     M_PATTERN,
+    M_GOL, //GOL mode add <<<
     M_PRESET_W,
     M_PRESET_R,
     M_HELP

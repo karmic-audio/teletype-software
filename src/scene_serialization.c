@@ -9,6 +9,7 @@
 #define STATE_SCRIPT 3
 #define STATE_PATTERNS 4
 #define STATE_GRID 5
+#define STATE_GOL 6
 
 uint8_t grid_state = 0;
 uint16_t grid_count = 0;

@@ -44,9 +44,9 @@ extern void tele_ii_tx(uint8_t addr, uint8_t *data, uint8_t l);
 extern void tele_ii_rx(uint8_t addr, uint8_t *data, uint8_t l);
 extern void tele_scene(uint8_t i, uint8_t init_grid, uint8_t init_pattern);
 
-// called when a pattern is updated
+// called when a pattern/gol is updated
 extern void tele_pattern_updated(void);
-
+extern void tele_gol_updated(void);//<<<<<<<<<<<<<<<<<
 extern void tele_vars_updated(void);
 
 extern void tele_kill(void);

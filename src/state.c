@@ -14,6 +14,7 @@ void ss_init(scene_state_t *ss) {
     ss_cal_init(ss);
     ss_variables_init(ss);
     ss_patterns_init(ss);
+    ss_gol_init(ss);
     ss_grid_init(ss);
     ss_rand_init(ss);
     ss_midi_init(ss);
@@ -103,6 +104,14 @@ void ss_pattern_init(scene_state_t *ss, size_t pattern_no) {
     p->end = 63;
     for (size_t i = 0; i < PATTERN_LENGTH; i++) { p->val[i] = 0; }
 }
+
+//GOL INIT
+void ss_gol_init(scene_state_t *ss) {
+    for (size_t i = 0; i < GOL_X; i++) {
+        ss->gol_grid.cells[i]=0;
+    }
+}
+
 
 // grid
 
@@ -295,9 +304,79 @@ scene_pattern_t *ss_patterns_ptr(scene_state_t *ss) {
     return ss->patterns;
 }
 
+
 size_t ss_patterns_size() {
     return sizeof(scene_pattern_t) * PATTERN_COUNT;
 }
+
+
+
+//GOL FUNCTIONS
+
+void gol_flip_on(scene_gol_t *gg, uint8_t GolXcoord, uint8_t GolYcoord) {
+    gg->cells[GolXcoord] =gg->cells[GolXcoord] | (1ULL << GolYcoord);
+}
+
+void gol_flip_off(scene_gol_t *gg, uint8_t GolXcoord, uint8_t GolYcoord) {
+    gg->cells[GolXcoord] =gg->cells[GolXcoord] & ~(1ULL << GolYcoord);
+}
+
+int gol_isalive(scene_gol_t *gg, uint8_t GolXcoord, uint8_t GolYcoord) {
+    uint8_t y;
+    y = gg->cells[GolXcoord] & (1ULL << GolYcoord) ? 1 : 0;
+    if (y==1) return 1;
+    else return 0;
+}
+
+int gol_AliveNeighbors(scene_gol_t *gg, uint8_t GolXcoord, uint8_t GolYcoord) {
+    uint8_t count = 0;
+    for (int8_t i = -1; i <= 1; i++) {
+        for (int8_t j = -1; j <= 1; j++) {
+            if (i == 0 && j == 0) continue; // Skip the cell itself
+            int8_t nx = GolXcoord + i;
+            int8_t ny = GolYcoord + j;
+            if (nx >= 0 && nx < 128 && ny >= 0 && ny < 64) {
+                count += gol_isalive(gg, nx, ny);
+            }
+        }
+    }
+    return count;
+}
+
+
+void gol_next_gen(scene_gol_t *gg) {
+    scene_gol_t new_gol_grid;
+    for (uint8_t i = 0; i < GOL_X; i++) {
+    new_gol_grid.cells[i] = gg->cells[i];
+    }
+    for (uint8_t i = 0; i < GOL_X; i++) {
+            for (uint8_t o = 0; o < GOL_Y; o++) {
+                uint8_t neighbors = gol_AliveNeighbors(gg, i, o);
+                scene_gol_t *nc = &new_gol_grid;
+            
+            if (gol_isalive(gg, i, o))
+            {
+                if (neighbors < 2 || neighbors > 3) {
+                    gol_flip_off(nc, i, o);
+                }
+                else {
+                    gol_flip_on(nc, i, o);
+                }
+            }
+            else {
+                if (neighbors == 3) {
+                    gol_flip_on(nc, i, o);
+                }
+                else {
+                    gol_flip_off(nc, i, o);
+                }
+            }
+            
+        }        
+    }
+    memcpy(gg->cells, new_gol_grid.cells, sizeof(new_gol_grid.cells));
+}
+    
 
 // script manipulation
 
