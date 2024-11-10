@@ -132,6 +132,9 @@
         "P.-W"        => { MATCH_OP(E_OP_P_SUBW); };
         "PN.-W"       => { MATCH_OP(E_OP_PN_SUBW); };
 
+        # gol
+        "GOL.GEN"     => { MATCH_OP(E_OP_GOL_GEN); };
+
         # queue
         "Q"           => { MATCH_OP(E_OP_Q); };
         "Q.AVG"       => { MATCH_OP(E_OP_Q_AVG); };

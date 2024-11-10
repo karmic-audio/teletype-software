@@ -110,6 +110,7 @@ typedef enum {
     E_OP_PN_ADDW,
     E_OP_P_SUBW,
     E_OP_PN_SUBW,
+    E_OP_GOL_GEN,
     E_OP_Q,
     E_OP_Q_AVG,
     E_OP_Q_N,
