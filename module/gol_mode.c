@@ -24,7 +24,7 @@ static bool dirty;
 
 static uint8_t CursorVarX = 0;
 static uint8_t CursorVarY = 0;
-static int CursorTLine = 0;
+static uint8_t CursorTLine = 0;
 
 static uint8_t GolVarX = 0;
 static uint8_t GolVarY = 0;
@@ -43,9 +43,9 @@ void set_gol_mode() //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 void gol_down()
 {
-    if (CursorVarY < 7)
+    if (CursorVarY < 6)
     {
-        CursorVarY++;
+        CursorVarY += 2;
         GolVarY++;
        
     }
@@ -53,7 +53,7 @@ void gol_down()
     {
         CursorTLine++;
         CursorVarY = 0;
-        GolVarY++;
+        GolVarY ++;
         
     }
 }
@@ -62,15 +62,15 @@ void gol_up()
 {
     if (CursorVarY)
     {
-        CursorVarY--;
+        CursorVarY -= 2;
         GolVarY--;
         
     }
     else if (CursorTLine)
     {
         CursorTLine--;
-        CursorVarY=7;
-        GolVarY--;
+        CursorVarY = 6;
+        GolVarY --;
         
     }
     
@@ -80,7 +80,7 @@ void gol_left()
 {
     if (CursorVarX)
     {
-        CursorVarX--;
+        CursorVarX -= 2;
         GolVarX--;
        
     }
@@ -88,9 +88,9 @@ void gol_left()
 
 void gol_right()
 {
-    if (CursorVarX < 127)
+    if (GolVarX < 63)
     {
-        CursorVarX++;
+        CursorVarX += 2;
         GolVarX++;
         
     }
@@ -191,14 +191,17 @@ uint8_t screen_refresh_gol()
         //Clear BG and Cursor
         for (uint8_t y = 0; y < 8; y++) {//bgfill
             region_fill(&line[y], 0);
-            region_fill_part(&line[CursorTLine], CursorVarX + CursorVarY*128, 1, 15);
+            region_fill_part(&line[CursorTLine], CursorVarX + CursorVarY * 128, 2, 15);
+            region_fill_part(&line[CursorTLine], CursorVarX + (CursorVarY + 1) * 128, 2, 15);
             }
         //Render Alive Cells
         for (uint8_t i = 0; i < GOL_X; i++) {
-            for (uint8_t o = 0; o < GOL_Y; o++) {
-                if (gol_isalive(&scene_state.gol_grid, i, o) == 1) {
-                    region_fill_part(&line[o/8], i+o*128-((o/8)*128*8), 1, 8);       
-                }
+            for (uint8_t j = 0; j < GOL_Y; j++) {
+                if (gol_isalive(&scene_state.gol_grid, i, j) == 1) {
+                    uint8_t y = j - (j / 4) * 4;
+                    region_fill_part(&line[j / 4], (i * 2) + (y * 2 * 128), 2, 8);
+                    region_fill_part(&line[j / 4], (i * 2) + (y * 2 * 128)+128, 2, 8);
+                                }
             }
          }        
             
@@ -208,5 +211,6 @@ uint8_t screen_refresh_gol()
     return 0xFF;
     }
 }
-//debug func
-//region_fill_part(&line[7], 0, debug, 15);
+// debug func
+// region_fill_part(&line[7], 0, debug, 15);
+// region_fill_part(&line[o / 4], , 2, 8);

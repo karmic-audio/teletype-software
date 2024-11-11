@@ -22,8 +22,8 @@
 #define STACK_OP_SIZE 16
 #define PATTERN_COUNT 4
 #define PATTERN_LENGTH 64
-#define GOL_X 128
-#define GOL_Y 64
+#define GOL_X 64
+#define GOL_Y 32
 #define SCRIPT_MAX_COMMANDS 6
 #define EXEC_DEPTH 8
 #define WHILE_DEPTH 10000
@@ -130,7 +130,7 @@ typedef struct {
 } scene_pattern_t;
 
 typedef struct {
-    uint64_t cells[GOL_X];
+    uint32_t cells[GOL_X];
 } scene_gol_t; ///<<<<<<<<<<GOL
 
 
