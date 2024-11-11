@@ -87,7 +87,8 @@ CSRCS = \
 	../src/teletype.c					\
 	../src/turtle.c					\
 	../src/chaos.c					\
-	../src/ops/op.c						\
+	../src/ops/op.c	
+	../src/ops/gol.c						\
 	../src/ops/ansible.c					\
 	../src/ops/controlflow.c				\
 	../src/ops/crow.c				\
