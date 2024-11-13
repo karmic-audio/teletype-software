@@ -423,6 +423,10 @@ void handler_PollADC(int32_t data) {
         process_pattern_knob(adc[1], mod_key);
         ss_set_param(&scene_state, adc[1] << 2);
     }
+    else if (mode == M_GOL) //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<GOL
+    {
+        ss_set_param(&scene_state, adc[1] << 2);
+    }
     else if (mode == M_PRESET_R && !(grid_connected && grid_control_mode)) {
         uint8_t preset = adc[1] >> 6;
         uint8_t deadzone = preset & 1;
@@ -898,11 +902,11 @@ bool process_global_keys(uint8_t k, uint8_t m, bool is_held_key) {
     // <tab>: change modes, live to edit to pattern and back
     if (match_no_mod(m, k, HID_TAB)) {
         if (mode == M_LIVE)
-            set_mode(M_GOL);
-        else if (mode == M_GOL)
             set_mode(M_EDIT);
         else if (mode == M_EDIT)
             set_mode(M_PATTERN);//<<<<<<<<<<<<<<<<<<
+        else if (mode == M_PATTERN)
+            set_mode(M_GOL);
         else
             set_mode(M_LIVE);
         return true;
