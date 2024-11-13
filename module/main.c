@@ -423,10 +423,6 @@ void handler_PollADC(int32_t data) {
         process_pattern_knob(adc[1], mod_key);
         ss_set_param(&scene_state, adc[1] << 2);
     }
-    else if (mode == M_GOL) //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<GOL
-    {
-        ss_set_param(&scene_state, adc[1] << 2);
-    }
     else if (mode == M_PRESET_R && !(grid_connected && grid_control_mode)) {
         uint8_t preset = adc[1] >> 6;
         uint8_t deadzone = preset & 1;
