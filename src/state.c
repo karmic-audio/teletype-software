@@ -5,7 +5,7 @@
 
 #include "helpers.h"
 #include "teletype_io.h"
-
+#include "teletype.h"
 ////////////////////////////////////////////////////////////////////////////////
 // SCENE STATE /////////////////////////////////////////////////////////////////
 
@@ -15,6 +15,7 @@ void ss_init(scene_state_t *ss) {
     ss_variables_init(ss);
     ss_patterns_init(ss);
     ss_gol_init(ss);
+    ss_gol_tr_init(ss);
     ss_grid_init(ss);
     ss_rand_init(ss);
     ss_midi_init(ss);
@@ -109,6 +110,17 @@ void ss_pattern_init(scene_state_t *ss, size_t pattern_no) {
 void ss_gol_init(scene_state_t *ss) {
     for (size_t i = 0; i < GOL_X; i++) {
         ss->gol_grid.cells[i]=0;
+        
+    }
+    
+}
+
+void ss_gol_tr_init(scene_state_t *ss) {
+    for (size_t j = 0; j < GOL_TR_CELLS; j++)
+    {
+        ss->trigcells[j].x = 0;
+        ss->trigcells[j].y = 0;
+        ss->trigcells[j].script = 0;
     }
 }
 
@@ -335,7 +347,7 @@ int gol_AliveNeighbors(scene_gol_t *gg, uint8_t GolXcoord, uint8_t GolYcoord) {
             if (i == 0 && j == 0) continue; // Skip the cell itself
             int8_t nx = GolXcoord + i;
             int8_t ny = GolYcoord + j;
-            if (nx >= 0 && nx < 128 && ny >= 0 && ny < 64) {
+            if (nx >= 0 && nx < 64 && ny >= 0 && ny < 32) {
                 count += gol_isalive(gg, nx, ny);
             }
         }
@@ -343,41 +355,69 @@ int gol_AliveNeighbors(scene_gol_t *gg, uint8_t GolXcoord, uint8_t GolYcoord) {
     return count;
 }
 
+//GOL
+void gol_set_tr(scene_state_t* ss, uint8_t Xcoord, uint8_t Ycoord, uint8_t cellN ,uint8_t snum) {
+    ss->trigcells[cellN].x = Xcoord;
+    ss->trigcells[cellN].y = Ycoord;
+    ss->trigcells[cellN].script = snum;
+}
 
-void gol_next_gen(scene_gol_t *gg) {
+void gol_next_gen(scene_state_t *ss) {
     scene_gol_t new_gol_grid;
-    for (uint8_t i = 0; i < GOL_X; i++) {
-    new_gol_grid.cells[i] = gg->cells[i];
+    uint8_t schedule_script[8] = { 0 };
+    for (uint8_t i = 0; i < GOL_X; i++)
+    {
+        new_gol_grid.cells[i] = ss->gol_grid.cells[i];
     }
     for (uint8_t i = 0; i < GOL_X; i++) {
-            for (uint8_t o = 0; o < GOL_Y; o++) {
-                uint8_t neighbors = gol_AliveNeighbors(gg, i, o);
+            for (uint8_t j = 0; j < GOL_Y; j++) {
+                uint8_t neighbors = gol_AliveNeighbors(&ss->gol_grid, i, j);//check whole grid for neighbors
                 scene_gol_t *nc = &new_gol_grid;
-            
-            if (gol_isalive(gg, i, o))
-            {
-                if (neighbors < 2 || neighbors > 3) {
-                    gol_flip_off(nc, i, o);
-                }
-                else {
-                    gol_flip_on(nc, i, o);
-                }
+
+                if (gol_isalive(&ss->gol_grid, i, j))//update newgrd according to gol rules
+                {
+                    if (neighbors < 2 || neighbors > 3)
+                    {
+                        gol_flip_off(nc, i, j);
+                    }
+                    else
+                    {
+                        gol_flip_on(nc, i, j);
+                    }
             }
             else {
                 if (neighbors == 3) {
-                    gol_flip_on(nc, i, o);
+                    //if empty cell has 3 neighbors flip alive + compare against tr cells and schedule execute script
+                    for (uint8_t l = 0; l < GOL_TR_CELLS; l++)
+                    {
+                        if (ss->trigcells[l].x == i 
+                        && ss->trigcells[l].y == j 
+                        && ss->trigcells[l].script > 0)
+                        { // record all scripts to be executed in array (-1 offset)
+                            int x = ss->trigcells[l].script - 1;
+                            schedule_script[x] = 1;
+                        }
+                    }
+                    gol_flip_on(nc, i, j);
                 }
                 else {
-                    gol_flip_off(nc, i, o);
+                    gol_flip_off(nc, i, j);
                 }
             }
             
         }        
     }
-    memcpy(gg->cells, new_gol_grid.cells, sizeof(new_gol_grid.cells));
-}
-    
+    memcpy(ss->gol_grid.cells, new_gol_grid.cells, sizeof(new_gol_grid.cells)); // update old grid to new grid
 
+    for (size_t i = 0; i < 8; i++)//run scheduled scripts 1-8
+    {
+        if (schedule_script[i] > 0)
+        {
+            run_script(ss, i);
+        }
+    }
+    
+}    
 // script manipulation
 
 uint8_t ss_get_script_len(scene_state_t *ss, uint8_t idx) {

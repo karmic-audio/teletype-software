@@ -5,10 +5,8 @@
 // asf
 #include "compiler.h"
 #include "delay.h"
-#include "edgetrigger.h"
 #include "gpio.h"
 #include "intc.h"
-#include "multihid.h"
 #include "pm.h"
 #include "preprocessor.h"
 #include "print_funcs.h"
@@ -45,7 +43,7 @@
 #include "help_mode.h"
 #include "keyboard_helper.h"
 #include "live_mode.h"
-#include "pattern_mode.h"
+#include "pattern_mode.h" 
 #include "gol_mode.h" //GOL mode add <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 #include "preset_r_mode.h"
 #include "preset_w_mode.h"
@@ -125,8 +123,6 @@ static uint8_t front_timer;
 static uint8_t mod_key = 0, hold_key, hold_key_count = 0;
 static uint64_t last_adc_tick = 0;
 static midi_behavior_t midi_behavior;
-static multihid_device_t* hid_keyboard = NULL;
-static edgetrigger_t* hid_keyboard_trigger = NULL;
 
 // timers
 static softTimer_t clockTimer = { .next = NULL, .prev = NULL };
@@ -165,9 +161,9 @@ static void handler_None(int32_t data);
 static void handler_Front(int32_t data);
 static void handler_PollADC(int32_t data);
 static void handler_KeyTimer(int32_t data);
-static void handler_MultihidConnect(int32_t data);
-static void handler_MultihidDisconnect(int32_t data);
-static void handler_MultihidTimer(int32_t data);
+static void handler_HidConnect(int32_t data);
+static void handler_HidDisconnect(int32_t data);
+static void handler_HidTimer(int32_t data);
 static void handler_MscConnect(int32_t data);
 static void handler_Trigger(int32_t data);
 static void handler_ScreenRefresh(int32_t data);
@@ -294,7 +290,7 @@ void adcTimer_callback(void* o) {
 }
 
 void hidTimer_callback(void* o) {
-    event_t e = { .type = kEventMultihidTimer, .data = 0 };
+    event_t e = { .type = kEventHidTimer, .data = 0 };
     event_post(&e);
 }
 
@@ -423,6 +419,10 @@ void handler_PollADC(int32_t data) {
         process_pattern_knob(adc[1], mod_key);
         ss_set_param(&scene_state, adc[1] << 2);
     }
+    else if (mode == M_GOL) //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<GOL
+    {
+        ss_set_param(&scene_state, adc[1] << 2);
+    }
     else if (mode == M_PRESET_R && !(grid_connected && grid_control_mode)) {
         uint8_t preset = adc[1] >> 6;
         uint8_t deadzone = preset & 1;
@@ -454,69 +454,38 @@ void handler_KeyTimer(int32_t data) {
     }
 }
 
-static void hid_keyboard_callback(void* context, uint8_t* report,
-                                  size_t report_size) {
-    edgetrigger_t* trigger = (edgetrigger_t*)context;
-    edgetrigger_fill(trigger, report);
+void handler_HidConnect(int32_t data) {
+    timer_add(&hidTimer, 47, &hidTimer_callback, NULL);
 }
 
-void handler_MultihidConnect(int32_t data) {
-    print_dbg("\r\nMultiHID connected...");
-
-    multihid_device_t* devices = (multihid_device_t*)data;
-    multihid_device_t* keyboard = multihid_find_keyboard(devices);
-
-    if (keyboard != NULL) {
-        if (hid_keyboard != NULL) { multihid_device_free(hid_keyboard); }
-        hid_keyboard = keyboard;
-
-        if (hid_keyboard_trigger != NULL) {
-            edgetrigger_free(hid_keyboard_trigger);
-        }
-        hid_keyboard_trigger = edgetrigger_new(keyboard->report_size);
-
-        multihid_start(hid_keyboard, hid_keyboard_callback,
-                       hid_keyboard_trigger);
-        timer_add(&hidTimer, 47, &hidTimer_callback, NULL);
-    }
-}
-
-void handler_MultihidDisconnect(int32_t data) {
-    print_dbg("\r\nMultiHID disconnected...");
-
+void handler_HidDisconnect(int32_t data) {
     timer_remove(&hidTimer);
-    if (hid_keyboard_trigger != NULL) {
-        edgetrigger_free(hid_keyboard_trigger);
-        hid_keyboard_trigger = NULL;
-    }
-    hid_keyboard = NULL;
 }
 
-void handler_MultihidTimer(int32_t data) {
-    if (hid_keyboard == NULL || hid_keyboard_trigger == NULL) { return; }
+void handler_HidTimer(int32_t data) {
+    if (hid_get_frame_dirty()) {
+        const int8_t* frame = (const int8_t*)hid_get_frame_data();
 
-    if (!edgetrigger_is_dirty(hid_keyboard_trigger)) { return; }
-
-    hid_boot_keyboard_report_t* report =
-        (hid_boot_keyboard_report_t*)edgetrigger_buffer(hid_keyboard_trigger);
-    mod_key = report->modifiers;
-    for (size_t i = 0; i < 6; i++) {
-        if (report->keys[i] == 0) {
-            if (i == 0) {
+        mod_key = frame[0];
+        for (size_t i = 2; i < 8; i++) {
+            if (frame[i] == 0) {
+                if (i == 2) {
+                    hold_key_count = 0;
+                    process_keypress(hold_key, mod_key, false, true);
+                    hold_key = 0;
+                }
+            }
+            else if (frame_compare(frame[i]) == false) {
+                hold_key = frame[i];
                 hold_key_count = 0;
-                process_keypress(hold_key, mod_key, false, true);
-                hold_key = 0;
+                process_keypress(hold_key, mod_key, false, false);
             }
         }
-        else if (frame_compare(report->keys[i]) == false) {
-            hold_key = report->keys[i];
-            hold_key_count = 0;
-            process_keypress(hold_key, mod_key, false, false);
-        }
+
+        set_old_frame(frame);
     }
 
-    set_old_keys(report->keys);
-    edgetrigger_clear_dirty(hid_keyboard_trigger);
+    hid_clear_frame_dirty();
 }
 
 void handler_MscConnect(int32_t data) {
@@ -759,9 +728,9 @@ void assign_main_event_handlers() {
     app_event_handlers[kEventFront] = &handler_Front;
     app_event_handlers[kEventPollADC] = &handler_PollADC;
     app_event_handlers[kEventKeyTimer] = &handler_KeyTimer;
-    app_event_handlers[kEventMultihidConnect] = &handler_MultihidConnect;
-    app_event_handlers[kEventMultihidDisconnect] = &handler_MultihidDisconnect;
-    app_event_handlers[kEventMultihidTimer] = &handler_MultihidTimer;
+    app_event_handlers[kEventHidConnect] = &handler_HidConnect;
+    app_event_handlers[kEventHidDisconnect] = &handler_HidDisconnect;
+    app_event_handlers[kEventHidTimer] = &handler_HidTimer;
     app_event_handlers[kEventMscConnect] = &handler_MscConnect;
     app_event_handlers[kEventTrigger] = &handler_Trigger;
     app_event_handlers[kEventScreenRefresh] = &handler_ScreenRefresh;
@@ -898,11 +867,11 @@ bool process_global_keys(uint8_t k, uint8_t m, bool is_held_key) {
     // <tab>: change modes, live to edit to pattern and back
     if (match_no_mod(m, k, HID_TAB)) {
         if (mode == M_LIVE)
-            set_mode(M_GOL);
-        else if (mode == M_GOL)
             set_mode(M_EDIT);
         else if (mode == M_EDIT)
-            set_mode(M_PATTERN);//<<<<<<<<<<<<<<<<<<
+            set_mode(M_PATTERN);
+        else if (mode == M_PATTERN)
+            set_mode(M_GOL);//<<<<<<<<<<<<<<<<<<
         else
             set_mode(M_LIVE);
         return true;

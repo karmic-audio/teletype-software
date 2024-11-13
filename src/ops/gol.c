@@ -6,7 +6,7 @@
 
 static void op_GOL_GEN_get(const void* NOTUSED(data), scene_state_t* ss, exec_state_t* NOTUSED(es), command_state_t* NOTUSED(cs))
 {
-    gol_next_gen(&ss->gol_grid);
+    gol_next_gen(ss);
     tele_gol_updated();
 }
 
