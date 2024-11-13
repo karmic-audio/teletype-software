@@ -25,7 +25,7 @@ static bool dirty;
 static uint8_t CursorVarX = 0;
 static uint8_t CursorVarY = 0;
 static uint8_t CursorTLine = 0;
-
+static int8_t TrCellTracker = 0;
 static uint8_t GolVarX = 0;
 static uint8_t GolVarY = 0;
 //static uint8_t debug;
@@ -53,7 +53,7 @@ void gol_down()
     {
         CursorTLine++;
         CursorVarY = 0;
-        GolVarY ++;
+        GolVarY++;
         
     }
 }
@@ -70,7 +70,7 @@ void gol_up()
     {
         CursorTLine--;
         CursorVarY = 6;
-        GolVarY --;
+        GolVarY--;
         
     }
     
@@ -159,9 +159,8 @@ void process_gol_keys(uint8_t k, uint8_t m, bool is_held_key)
     //<spacebar>
     else if (match_no_mod(m, k, HID_SPACEBAR)) 
     {
-       gol_next_gen(&scene_state.gol_grid);
-        
-        dirty = true;
+       gol_next_gen(&scene_state);
+       dirty = true;
     }
 
     //<enter>
@@ -174,8 +173,37 @@ void process_gol_keys(uint8_t k, uint8_t m, bool is_held_key)
         else {gol_flip_on(&scene_state.gol_grid, GolVarX, GolVarY);}
         dirty=true;
     }
-}    
-       
+
+    //<0-9>
+    else if (no_mod(m) && k >= HID_1 && k <= HID_0)
+    {
+        if (k != HID_9)//filter out 9
+        {
+            uint8_t n = (k - HID_1 + 1) % 10; // convert HID numbers
+            for (size_t i = 0; i < GOL_TR_CELLS; i++)
+            {
+                if (GolVarX == scene_state.trigcells[i].x 
+                && GolVarY == scene_state.trigcells[i].y)
+                {
+                    TrCellTracker = i;
+                    break;
+                }
+            }
+            if (TrCellTracker >= GOL_TR_CELLS)
+            {
+                TrCellTracker = 0;
+                gol_set_tr(&scene_state, GolVarX, GolVarY, TrCellTracker, n);
+                TrCellTracker++;
+            }
+            else
+            {
+                gol_set_tr(&scene_state, GolVarX, GolVarY, TrCellTracker, n);
+                TrCellTracker++;
+            }
+        }
+        dirty = true;
+    }
+}
 
 
 uint8_t screen_refresh_gol()
@@ -188,29 +216,40 @@ uint8_t screen_refresh_gol()
     }
     else
     {   
-        //Clear BG and Cursor
+        //1.Clear BG
         for (uint8_t y = 0; y < 8; y++) {//bgfill
             region_fill(&line[y], 0);
+            }
+        //2.Render Trig Cells
+        for (uint8_t i = 0; i < GOL_TR_CELLS; i++)
+        {
+            if (scene_state.trigcells[i].script > 0) // render Trig Cells
+            {
+                uint8_t x = scene_state.trigcells[i].x;
+                uint8_t y = scene_state.trigcells[i].y;
+                uint8_t yy = y - (y / 4) * 4;
+                region_fill_part(&line[y / 4], (x * 2) + (yy * 2 * 128), 2, 4);
+                region_fill_part(&line[y / 4], (x * 2) + (yy * 2 * 128) + 128, 2, 4);
+            }
+        }
+        //3.Render Alive Cells
+            for (uint8_t i = 0; i < GOL_X; i++)
+            {
+                for (uint8_t j = 0; j < GOL_Y; j++)
+                {
+                    if (gol_isalive(&scene_state.gol_grid, i, j) == 1)
+                    {
+                        uint8_t y = j - (j / 4) * 4;
+                        region_fill_part(&line[j / 4], (i * 2) + (y * 2 * 128), 2, 8);
+                        region_fill_part(&line[j / 4], (i * 2) + (y * 2 * 128) + 128, 2, 8);
+                    }
+                    
+                }
+            }
             region_fill_part(&line[CursorTLine], CursorVarX + CursorVarY * 128, 2, 15);
-            region_fill_part(&line[CursorTLine], CursorVarX + (CursorVarY + 1) * 128, 2, 15);
-            }
-        //Render Alive Cells
-        for (uint8_t i = 0; i < GOL_X; i++) {
-            for (uint8_t j = 0; j < GOL_Y; j++) {
-                if (gol_isalive(&scene_state.gol_grid, i, j) == 1) {
-                    uint8_t y = j - (j / 4) * 4;
-                    region_fill_part(&line[j / 4], (i * 2) + (y * 2 * 128), 2, 8);
-                    region_fill_part(&line[j / 4], (i * 2) + (y * 2 * 128)+128, 2, 8);
-                                }
-            }
-         }        
-            
-    
-    dirty = false;
+            region_fill_part(&line[CursorTLine], CursorVarX + (CursorVarY + 1) * 128, 2, 12);
 
-    return 0xFF;
+            dirty = false;
+            return 0xFF;
     }
 }
-// debug func
-// region_fill_part(&line[7], 0, debug, 15);
-// region_fill_part(&line[o / 4], , 2, 8);
